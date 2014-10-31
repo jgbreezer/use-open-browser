@@ -1,0 +1,2 @@
+Found this which might be able to repurpose something like, to select use-open-browser as default mime handler in ubuntu recent versions (replaces nautilus with nemo file browser):
+xdg-mime default nemo.desktop inode/directory application/x-gnome-saved-search

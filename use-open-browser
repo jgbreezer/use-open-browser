@@ -1,0 +1,131 @@
+#!/bin/bash
+# Script to load url in currently open browser.
+# If multiple browsers running, choose preferred browser, from prefs in /etc/use-open-browser.cf
+# formatted as:shell script VAR=value to be sourced that can set www_* vars below
+# 
+# below vars can be overridden by config file just by setting them in shell form
+# url = 1st arg, rest can be browser flags
+prog=$(basename $0)
+#getopt -n $prog -o h?dt --long tab,dry -- "$@"
+dry=''
+tab=''
+while [ "${1:0:1}" = '-' ]
+do
+    case "$1" in
+    -h|-\?) echo "Usage: $prog [-t|--dry]"; echo "-t=force new tab instead of new window, --dry=dry run, dont start browser just echo command"; exit 2;;
+    -t) tab=1;;
+    --dry) dry=1;;
+    *) echo "Unsupported option $1"; exit 2;;
+    esac
+    shift
+done
+url="$1"
+shift
+
+# known browser executables
+www_chrome=$(which google-chrome)
+www_chromium=$(which chromium-browser)
+www_firefox=$(which firefox)
+www_opera=$(which opera)
+www_opera_beta=$(which opera-beta)
+www_khtml=$(which khtml)
+# extra handler..
+www_image_viewer=$(which eog)
+
+# browser shortnames in one white-space-separated value, preference order; names match www_* vars
+# first = highest pref.
+ordering="opera_beta opera firefox chrome chromium khtml"
+
+# function to apply override for a particualr domain: $1=browser (short name as used in www_<shortname>), $2=domain.pattern (glob or /regex/). Intended for easy config file use and some future-proofing. Use after www_<names> have been defined.
+typeset -a browser_domains
+browserdomain ()
+{
+    browser_domains[${#browser_domains}]="$1 $2"
+}
+
+report_error ()
+{
+    if type -Pf zenity &>/dev/null
+    then
+	local txt=$(echo -e "$@")
+	zenity --error --title="$prog" --text="$txt"
+    elif type -Pf xmessage &>/dev/null
+    then
+	local txt=$(echo -e "$@")
+	xmessage -center -title "$prog Error" "ERROR:"$'\n'"$txt"$'\n\n'
+    else
+	# user might not see this if run outside a shell, but hey this is last ditch attempt
+	echo -e "$@"
+    fi
+}
+
+[ -f /etc/use-open-browser.cf ] && source /etc/use-open-browser.cf
+[ -f "$HOME/.use-open-browser.cf" ] && source "$HOME/.use-open-browser.cf"
+
+# test if specific match for a domain set by browserdomain()
+[ -n "$dry" ] && echo "Checking domain-specific preferences: ${browser_domains[@]}"
+for domain in "${browser_domains[@]}"
+do
+    b_d=($domain)
+    if [ / == "${b_d[1]:0:1}" ]
+    then
+
+	case "${b_d[1]}" in
+	    /*/) echo "$url" | grep -q "${b_d[1]:1:${#b_d[1]}-1}" && { browser=${b_d[0]}; break; } ;;
+	esac
+    else
+	case "$url" in
+	    ${b_d[1]}) browser=${b_d[0]}; break;;
+	esac
+    fi
+done
+
+if [ -z "$browser" ]
+then
+    [ "${url:0:5}" == "file:" ] && url_local="${url:7}" || url_local=''
+    [ "${url:0:1}" == / ] && url_local="$url"
+    if [ -n "$url_local" ]
+    then
+	# check extennsion-specific rules, if last part of main url is a recognised filename extension
+	# strip GET params
+	url_main="${url%%\?*}"
+	# strip domain+any earlier path
+	url_path="${url_main##*/}"
+	case "${url_path##*.}" in
+	    gif|jpg|jpeg|png) browser="image_viewer";;
+	esac
+    fi
+fi
+
+if [ -z "$browser" ]
+then
+    # no specific match; use regular pref ordering, for whichever is running
+    [ -n "$dry" ] && echo "Using general preference ordering for running browsers: $ordering"
+    for browser in $ordering
+    do
+	b_var="www_$browser"
+	browser_exe=${!b_var}
+	ps=$(ps -C$(basename "$browser_exe") -opid=)
+	[ $? -eq 0 ] && break
+	browser=''
+    done
+fi
+
+if [ -n "$browser" ]
+then
+    [ -n "$dry" ] && echo "Domain match, browser: ${browser}"
+    b_var="www_$browser"
+    browser_exe=${!b_var}
+else
+    [ -z "$browser" ] && { report_error "ERROR no browser set for:\n$url"; [ -n "$DISPLAY" -a -n "$WINDOWID" ] && report_error "No browser found for:\n$url"; exit 1; }
+fi
+if [ -n "$dry" ]
+then
+    echo "Dry run. URL:\n"
+    echo "$url"
+    echo "Full command line:"
+    echo "  $browser_exe $url" "$@"
+    report_error "Dry run for:\n$url\n\nFull command line:\n$browser_exe '$url' $@"
+else
+    eval $browser_exe "'${url//\'/\'\\\'\'}'" "$@"
+fi
