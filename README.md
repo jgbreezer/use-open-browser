@@ -9,15 +9,15 @@ INSTALL
 -------
 Place use-open-browser and use-open-browser.desktop files here. Yes, there's no package for it or automatic install/uninstall yet. I've built rpm's by hand before but deb's, not really, was a long time ago I did stuff with 'em.
 
-  /usr/share/applications/use-open-browser.desktop
-  /usr/bin/use-open-browser
+* /usr/share/applications/use-open-browser.desktop
+* /usr/bin/use-open-browser
 
 CONFIGURE
 ---------
 Local config file in your $HOME will override any in /etc, it tries to source the following config scripts (ie must be in 'sh' style NAME=value format, one name per line is best):
 
-  /etc/use-open-browser.cf
-  $HOME/.use-open-browser.cf
+* /etc/use-open-browser.cf
+* $HOME/.use-open-browser.cf
 
 It may also be run manually on the command line with a url, to test or obtain specific behaviour. Though using gnome-open or xdg-open or your desktop's equivalent with the url as parameter is far more portable and safer and works when use-open-browser isn't installed :)
 
