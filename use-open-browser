@@ -101,23 +101,34 @@ if [ -z "$browser" ]
 then
     # no specific match; use regular pref ordering, for whichever is running
     [ -n "$dry" ] && echo "Using general preference ordering for running browsers: $ordering"
-    for browser in $ordering
+    # also find first workable browser in case none match and need to start one from scratch
+    b_default=''
+    for b in $ordering
     do
-	b_var="www_$browser"
+	b_var="www_$b"
 	browser_exe=${!b_var}
-	ps=$(ps -C$(basename "$browser_exe") -opid=)
-	[ $? -eq 0 ] && break
-	browser=''
+	if [ -n "$browser_exe" ]
+	then
+	    ps=$(ps -C$(basename "$browser_exe") -opid=)
+	    [ $? -eq 0 ] && { browser=$b; break; }
+	    [ -z "$b_default" ] && b_default=$b
+	fi
     done
 fi
 
+# use first valid browser from $ordering preference order list order if none running yet
+# (IDEA:could have option for user choice instead here)
+[ -n "$browser" ] || browser="$b_default"
+
 if [ -n "$browser" ]
 then
-    [ -n "$dry" ] && echo "Domain match, browser: ${browser}"
+    [ -n "$dry" ] && echo "Domain/preference-order match, browser: ${browser}"
     b_var="www_$browser"
     browser_exe=${!b_var}
 else
-    [ -z "$browser" ] && { report_error "ERROR no browser set for:\n$url"; [ -n "$DISPLAY" -a -n "$WINDOWID" ] && report_error "No browser found for:\n$url"; exit 1; }
+    report_error "ERROR no browser set for:\n$url"
+    [ -n "$DISPLAY" -a -n "$WINDOWID" ] && report_error "No browser found for:\n$url"
+    exit 1
 fi
 if [ -n "$dry" ]
 then
