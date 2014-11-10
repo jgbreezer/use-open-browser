@@ -6,14 +6,12 @@
 # below vars can be overridden by config file just by setting them in shell form
 # url = 1st arg, rest can be browser flags
 prog=$(basename $0)
-#getopt -n $prog -o h?dt --long tab,dry -- "$@"
+#getopt -n $prog -o h?dt --long dry -- "$@"
 dry=''
-tab=''
 while [ "${1:0:1}" = '-' ]
 do
     case "$1" in
-    -h|-\?) echo "Usage: $prog [-t|--dry]"; echo "-t=force new tab instead of new window, --dry=dry run, dont start browser just echo command"; exit 2;;
-    -t) tab=1;;
+    -h|-\?) echo "Usage: $prog [--dry]"; echo "--dry=dry run, dont start browser just echo command or report error as normal"; exit 2;;
     --dry) dry=1;;
     *) echo "Unsupported option $1"; exit 2;;
     esac
