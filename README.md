@@ -12,6 +12,8 @@ Place use-open-browser and use-open-browser.desktop files here. Yes, there's no 
 * /usr/share/applications/use-open-browser.desktop
 * /usr/bin/use-open-browser
 
+Then use the regular "default applications" setting (the "Details" item in "All Settings" in Ubuntu with Unity, ie. 12.10 onwards, the 2nd item down on the left - typing "details" into the unity search bar will find it) to change your default browser to "Use Active Web Browser".
+
 CONFIGURE
 ---------
 Local config file in your $HOME will override any in /etc, it tries to source the following config scripts (ie must be in 'sh' style NAME=value format, one name per line is best):
