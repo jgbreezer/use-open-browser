@@ -6,13 +6,15 @@
 # below vars can be overridden by config file just by setting them in shell form
 # url = 1st arg, rest can be browser flags
 prog=$(basename $0)
-#getopt -n $prog -o h?dt --long dry -- "$@"
+#getopt -n $prog -o vh?dt --long dry -- "$@"
 dry=''
+verbose=''
 while [ "${1:0:1}" = '-' ]
 do
     case "$1" in
     -h|-\?) echo "Usage: $prog [--dry]"; echo "--dry=dry run, dont start browser just echo command or report error as normal"; exit 2;;
     --dry) dry=1;;
+    -v) verbose=1;;
     *) echo "Unsupported option $1"; exit 2;;
     esac
     shift
@@ -27,14 +29,44 @@ www_firefox=$(which firefox)
 www_opera=$(which opera)
 www_opera_beta=$(which opera-beta)
 www_khtml=$(which khtml)
-# extra handler..
-www_image_viewer=$(which eog)
+www_links=$(which links)
+www_lynx=$(which lynx)
+# special: non-browser.
+# idea: copy url to clipboard/selection (though almost always available in app)
+# idea: user-choice dialog for browsers
 
 # browser shortnames in one white-space-separated value, preference order; names match www_* vars
-# first = highest pref.
-ordering="opera_beta opera firefox chrome chromium khtml"
+# first = highest pref. Expected to be overridden by config files
+ordering="opera_beta opera firefox chromium chrome khtml links lynx"
 
-# function to apply override for a particualr domain: $1=browser (short name as used in www_<shortname>), $2=domain.pattern (glob or /regex/). Intended for easy config file use and some future-proofing. Use after www_<names> have been defined.
+# function adds browser into list. $1=executable namei, $2=first/start/begin/high or last/end/low for priority (where it adds to list;default=highest priority aka first), $3=optional identifier (no punctuation except underscore '_' allowed, must start with letter, case sensitive) - if unset, uses basename of $1 with - converted to _ and other punctuation/initial non-letters removed
+addbrowser ()
+{
+    local exe="$1"
+    [ -f "$exe" ] || exe="$(which "$exe")"
+    if ! [ -f "$exe" ]
+    then
+	report_error "cannot find executable for browser '$exe' - not adding (mistyped? missing PATH?)"
+	return 1
+    fi
+    local ident="$3"
+    # sanitise as identifier
+    ident="$(basename "$1")";
+    ident="${ident//[^-A-Za-z0-9_.]}"
+    ident="${ident//[-.]/_}";
+    while [ "${ident#[0-9_]}" != "$ident" ] ; do ident="${ident#[0-9_]}"; done
+    [ -n "$verbose" ] && report_error "identifier '$ident' added for browser executable $exe"
+    # create browser var
+    typeset www_$ident "$exe"
+    # add to priority list
+    case "$2" in
+	first|start|begin|high|'') ordering="$ident $ordering";;
+	last|end|low) ordering="$ordering";;
+	*) report_error "priority '$2' not supported by addbrowser configuration statement for browser '$1' - not adding"
+    esac
+}
+
+# function to apply override for a particular domain: $1=browser (short name identifier, suitable as variable name (identifier); as used in www_<shortname> above), $2=domain.pattern (glob or /regex/). Intended for easy config file use and some future-proofing. Use after www_<names> have been defined
 typeset -a browser_domains
 browserdomain ()
 {
@@ -80,23 +112,6 @@ done
 
 if [ -z "$browser" ]
 then
-    [ "${url:0:5}" == "file:" ] && url_local="${url:7}" || url_local=''
-    [ "${url:0:1}" == / ] && url_local="$url"
-    if [ -n "$url_local" ]
-    then
-	# check extennsion-specific rules, if last part of main url is a recognised filename extension
-	# strip GET params
-	url_main="${url%%\?*}"
-	# strip domain+any earlier path
-	url_path="${url_main##*/}"
-	case "${url_path##*.}" in
-	    gif|jpg|jpeg|png) browser="image_viewer";;
-	esac
-    fi
-fi
-
-if [ -z "$browser" ]
-then
     # no specific match; use regular pref ordering, for whichever is running
     [ -n "$dry" ] && echo "Using general preference ordering for running browsers: $ordering"
     # also find first workable browser in case none match and need to start one from scratch
@@ -124,17 +139,18 @@ then
     b_var="www_$browser"
     browser_exe=${!b_var}
 else
-    report_error "ERROR no browser set for:\n$url"
+    # fatal error, make sure seen
+    report_error "no browser set for:\n$url"
     [ -n "$DISPLAY" -a -n "$WINDOWID" ] && report_error "No browser found for:\n$url"
     exit 1
 fi
 if [ -n "$dry" ]
 then
-    echo "Dry run. URL:\n"
+    echo "Dry run. URL:"
     echo "$url"
     echo "Full command line:"
     echo "  $browser_exe $url" "$@"
     report_error "Dry run for:\n$url\n\nFull command line:\n$browser_exe '$url' $@"
 else
-    eval $browser_exe "'${url//\'/\'\\\'\'}'" "$@"
+    eval $browser_exe "'${url//\'/\'\\\'\'}'" "$@" \&
 fi
