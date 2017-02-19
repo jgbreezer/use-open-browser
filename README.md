@@ -27,4 +27,6 @@ ERRORS
 ------
 If the given url doesn't match, it will attempt to report the error with an error dialog for your system, based on ubuntu/gnome usage at present, and via the terminal if it can't trivially find the display manager to open a window with.
 
-Beware: it is currently buggy, you will see this too often in trivial circumstances sometimes (eg. no browser open and the English day name ends in a y or something)
+-v option on the command-line (given before a url, careful to quote it if needed) may help explain what its doing; --dry will just output the command it would have run without actually opening the url in a browser each time.
+
+Beware: it is currently buggy, but less so than the first release. You may see failures or wrong browsers opened in some circumstances, please report any patterns you see (along with your configuration, otherwise its not very helpful) to John Garner via my github (jgbreezer) or email (same account name at gmail.com)
